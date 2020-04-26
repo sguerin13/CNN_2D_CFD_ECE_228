@@ -27,7 +27,11 @@ def sim_to_x_y(path):
     sim = np.stack((vx,vy,rho),0)
 
     # swap axes so time is the first axis
-    sim.swapaxes(0,3)
+    sim.swapaxes(0,3) # swap time and data type
+    sim.swapaxes(1,3) # swap x and time
+    sim.swapaxes(2,3) # swap x and y
+
+    # data should now be (time,data_type,x,y)
 
     # data gets truncated by 1 due to the lags
     x_data = np.zeros((sim.shape[0]-1,sim.shape[1],sim.shape[2],sim.shape[3]))
