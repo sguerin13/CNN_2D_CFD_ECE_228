@@ -9,11 +9,12 @@ from scipy.ndimage.morphology import distance_transform_edt as dist_transform
 import matplotlib.pyplot as plt
 import pylbm
 
-def get_random_triangle():
-    start = (np.random.rand(2)-0.5)/3+[0.3,0.3]
-    end1 = (np.random.rand(2)-0.5)/3+[0.7,0.3]
+def get_random_triangle(p1 = [0.3,0.3], p2 = [0.7,0.3], p3 = [0.5,0.7], var = 0.3):
+    
+    start = (np.random.rand(2)-0.5) * var + p1
+    end1 = (np.random.rand(2)-0.5) * var + p2
     v1 = end1 - start
-    end2 = (np.random.rand(2)-0.5)/3+[0.5,0.7]
+    end2 = (np.random.rand(2)-0.5) * var + p3
     v2 = end2 - start
     obs = pylbm.Triangle(start,v1,v2,label=2)
     return obs
@@ -24,8 +25,9 @@ def plot_random_triangle():
     x_search = np.linspace(0,2,128)
     y_search = np.linspace(0,1,64)
     
+    obs = get_random_triangle()
     g,h = get_distance(x_search,y_search,obs)
-    plt.imshow(g.T)
+    plt.imshow(h.T)
     
 
 def get_distance(search_x, search_y, obs):
