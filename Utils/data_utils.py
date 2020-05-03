@@ -1,5 +1,31 @@
+'''
+
+Data loading and preparation functionality for prediction of 
+open channel fluid flows using Deep Learning.
+
+Functions cover:
+    - Data Loading from compressed files
+    - Data Parsing into X,Y pairs
+    - Normalization
+    - DataLoader Creation
+
+'''
+
+
+
+
 import numpy as np
 import torch
+from sklearn.preprocessing import StandardScaler as STD
+from pickle import dump,load
+
+'''
+
+DATA LOADING SECTION
+- function:
+    - load_array
+    - load_array_with_sdf
+'''
 
 def load_array(path):
     '''
@@ -30,6 +56,50 @@ def load_array(path):
 
     # data should now be (time,data_type,y,x)
     return sim
+
+def load_array_with_sdf(path):
+    '''
+    helper function that loads the compressed numpy file into an array
+    and orders the data into a 4-d array that is
+    (time_step,metric(vx,vy,rho),y,x). Also load the 2D Array for the SDF
+    putting the data in this form will make it easier for processing
+    in pytorch
+    '''
+
+    # path = 'Re_25.npz'  # demo file
+    data_file = np.load(path)
+    #data_file.files 
+
+    # data is shape (x,y,t)
+    # vx = x_velo, vy = y_velo, rho = fluid density
+    vx = data_file['vx']
+    vy = data_file['vy']
+    rho = data_file['rho']
+    sdf = data_file['sdf']
+    
+    # stack along the first dimension
+    sim = np.stack((vx,vy,rho),0)
+
+    # swap axes so time is the first axis
+    sim = np.swapaxes(sim,0,3) # swap time and data type
+    sim = np.swapaxes(sim,1,3) # swap x and time
+
+    # data should now be (time,data_type,y,x)
+    return sim,sdf
+
+
+'''
+
+X,Y PAIR CREATION
+- functions:
+    - sim_to_x_y
+    - sim_to_seqx_y
+    - sim_to_seqx_seqy
+    - sim_to_auto_enc_data
+
+'''
+
+
 
 
 def sim_to_x_y(sim):
@@ -322,6 +392,112 @@ def sim_to_auto_enc_data(sim):
     y_data = sim # target is the input
     return x_data,y_data
     
+
+'''
+
+DATA NORMALIZATION SECTION
+- functions:
+    - normalize_sim_data
+    - save_std_scalar
+    - load_std_scalar
+    - normalize_w_scalar
+
+'''
+
+
+def normalize_sim_data(sim):
+    '''
+    - This function parses through the simulation data and creates separate scalars
+    for the velocity and the density data
+
+    - jointly normalize vx, vy so that they are on the same normalization scale
+    - normalize rho on it's own scale
+    
+    - Create a temporary variable the groups v_x,v_y into a single row and learn
+    the scaling factor, it is then applied to the the array, same process to rho
+
+    - Returns the scaler objects so they can be saved if desired
+    '''
+    # get array shapes for layer
+    velo_shape = sim[:,:2,:,:].shape
+    rho_shape  = sim[:,-1,:,:].shape
+
+    temp_velos = sim[:,:2,:,:].copy() # copy 
+    temp_velos = temp_velos.reshape((1,-1)) # flatten
+    temp_rho   = sim[:,-1,:,:].copy() 
+    temp_rho   = temp_rho.reshape((1,-1))
+    
+    # declare objects
+    velo_scaler = STD()
+    rho_scaler  = STD()
+
+    # fit to the data
+    scaled_velo = velo_scaler.fit_transform(temp_velos) 
+    scaled_rho  = rho_scaler.fit_transform(temp_rho)
+
+    # move back into (t,n,y,x) shapes
+    scaled_velo = scaled_velo.reshape(velo_shape)
+    scaled_rho =  scaled_rho.reshape(rho_shape)
+
+    # expand the dimension of rho to make it a 4D array
+    scaled_rho = np.expand_dims(scaled_rho,axis=1)
+
+    # stack along the second dimension
+    sim_scaled = np.concatenate((scaled_velo,scaled_rho),axis=1)
+
+    #check to make sure the shape is correct
+    assert sim_scaled.shape == sim.shape
+
+    # return scalar objects in case you want to save them for test time
+    return sim_scaled,velo_scaler,rho_scaler
+
+
+
+def save_std_scaler(scaler,file_name):
+
+    dump(scalar,open(file_name,'wb'))
+
+
+
+def load_std_scaler(file_name):
+
+    scaler = load(open(file_name,'wb'))
+
+    return scaler
+
+
+def normalize_w_scaler(data,scaler):
+
+    '''
+    - function to normalize the data with a loaded scaler object from sklearn
+    - returns array of the same shape
+        
+    '''
+
+    # get array shapes for layer
+    data_shape = data.shape
+    temp_data = data.copy()
+    temp_data = temp_data.reshape((1,-1)) # flatten
+    
+    scaled_data = scaler.transform(temp_data) 
+
+    # move back into (t,n,y,x) shapes
+    scaled_data = scaled_data.reshape(data_shape)
+
+    return scaled_data
+
+
+'''
+
+TORCH DATA LOADING SECTION
+- functions:
+    - np_to_torch_dataloader
+
+'''
+
+
+
+
 
 def np_to_torch_dataloader(x_in,target,batch = 1):
     '''
