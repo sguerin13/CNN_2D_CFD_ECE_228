@@ -73,17 +73,26 @@ def load_array_with_sdf(path):
     # data is shape (x,y,t)
     # vx = x_velo, vy = y_velo, rho = fluid density
     vx = data_file['vx']
+    vx = vx/np.max(vx)
+    
     vy = data_file['vy']
+    vy = vy/np.max(vy)
+    
     rho = data_file['rho']
+    rho = rho/np.max(rho)
+    
     sdf = data_file['sdf']
     
     # stack along the first dimension
-    sim = np.stack((vx,vy,rho),0)
+    sim = np.stack((vx,vy),0)
 
     # swap axes so time is the first axis
     sim = np.swapaxes(sim,0,3) # swap time and data type
     sim = np.swapaxes(sim,1,3) # swap x and time
+    sim = np.swapaxes(sim,2,3) # swap x and time
 
+    sdf = np.expand_dims(sdf, 0)
+    sdf = np.moveaxis(sdf,3,0)
     # data should now be (time,data_type,y,x)
     return sim,sdf
 
