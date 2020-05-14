@@ -123,6 +123,8 @@ def build_scaled_dataset(path,velo_scaler,rho_scaler,sdf_scaler,Re_scaler,mode =
 
             # create multiple copies of the mask
             mask = np.repeat(mask,x_data.shape[0],axis = 0)
+            # expand mask so it is also a 4D array
+            mask = np.expand_dims(mask,axis=1)
 
 
             if i == 0:
