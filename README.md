@@ -1,4 +1,4 @@
-# ECE-228-Project
+# 2D Steady Fluid Flow Via Convolutional Neural Network
 
 Group Project for UCSD ECE 228 - Predicting 2D Steady state fluid flow fields with Convolutional Neural Networks.
 
